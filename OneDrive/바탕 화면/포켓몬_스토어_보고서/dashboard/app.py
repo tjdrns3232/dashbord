@@ -240,32 +240,6 @@ with col3:
 
 st.markdown("---")
 
-# 흐름 설명
-with st.expander("📖 지표 관계 설명 (클릭해서 보기)"):
-    st.markdown("""
-    ### 🎯 KPI 해석 가이드
-
-    **1️⃣ 전환율 (주요 지표)**
-    - 광고 클릭이 실제 구매로 이어지는 비율
-    - 🔴 낮으면: 광고 타게팅/메시지가 부정확
-    - 🟢 높으면: 마케팅 전략이 효과적
-
-    **2️⃣ 클릭 유입 단계**
-    - 노출 → 클릭 → 전환의 퍼널
-    - CTR이 높아도 전환율이 낮으면? → 랜딩페이지 최적화 필요
-
-    **3️⃣ 매출 성과**
-    - 전환이 얼마의 매출로 이어지는지
-    - 거래건수와 평균거래액의 조합으로 성장성 판단
-
-    **4️⃣ 효율성 지표**
-    - ROI: 투자 대비 수익 비율
-    - CPA: 고객 한 명을 획득하는 데 드는 비용
-    - CPA가 높으면? → 광고비 조정 필요
-    """)
-
-st.markdown("---")
-
 # ===== 추이 분석 (탭 구성) =====
 st.subheader("📊 시계열 추이 분석")
 
@@ -689,20 +663,22 @@ fig_heatmap = go.Figure(data=go.Heatmap(
         [0.5, '#fee08b'],
         [1, '#1a9850']
     ],
-    colorbar=dict(title="판매액 (₩)", thickness=15),
+    colorbar=dict(title="판매액 (₩)", thickness=20, tickfont=dict(size=12)),
     text=heatmap_data.values.astype(int),
     texttemplate='₩%{text:,}',
-    textfont={"size": 10},
+    textfont={"size": 14, "color": "black"},
     hovertemplate='시간: %{y}시<br>요일: %{x}<br>판매액: ₩%{z:,}<br>기준대비: %{customdata:.1f}σ<extra></extra>',
     customdata=normalized_data
 ))
 
 fig_heatmap.update_layout(
-    height=500,
+    height=700,
     xaxis_title="요일",
     yaxis_title="시간대",
     title="",
-    font=dict(size=11)
+    font=dict(size=14),
+    xaxis=dict(tickfont=dict(size=13)),
+    yaxis=dict(tickfont=dict(size=12))
 )
 st.plotly_chart(fig_heatmap, use_container_width=True)
 
