@@ -9,9 +9,9 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-st.set_page_config(page_title="캠페인 성과", page_icon="🎯")
+st.set_page_config(page_title="성과분석", page_icon="📊")
 
-st.title("🎯 캠페인 성과 분석")
+st.title("📊 성과분석")
 st.markdown("---")
 
 # 캠페인 데이터 로드
