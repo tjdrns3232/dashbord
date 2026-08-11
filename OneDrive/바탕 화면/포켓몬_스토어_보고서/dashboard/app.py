@@ -48,12 +48,55 @@ end_date = daily_sales['date'].max()
 # 사이드바 필터
 st.sidebar.title("🎯 필터 설정")
 
+# 기간 선택 (라디오 + 커스텀 날짜)
 date_range = st.sidebar.radio(
     "📅 기간 선택",
-    ["전체", "최근 30일", "최근 7일"]
+    ["전체", "최근 7일", "최근 30일", "커스텀"]
 )
 
+# 커스텀 날짜 선택
+if date_range == "커스텀":
+    col1, col2 = st.sidebar.columns(2)
+    with col1:
+        custom_start = st.date_input(
+            "시작일",
+            value=end_date - pd.Timedelta(days=30),
+            min_value=start_date,
+            max_value=end_date
+        )
+    with col2:
+        custom_end = st.date_input(
+            "종료일",
+            value=end_date,
+            min_value=start_date,
+            max_value=end_date
+        )
+    filter_start_date = pd.Timestamp(custom_start)
+    filter_end_date = pd.Timestamp(custom_end)
+else:
+    filter_end_date = end_date
+    if date_range == "최근 7일":
+        filter_start_date = end_date - pd.Timedelta(days=7)
+        comparison_start = end_date - pd.Timedelta(days=14)
+        comparison_end = end_date - pd.Timedelta(days=7)
+    elif date_range == "최근 30일":
+        filter_start_date = end_date - pd.Timedelta(days=30)
+        comparison_start = end_date - pd.Timedelta(days=60)
+        comparison_end = end_date - pd.Timedelta(days=30)
+    else:  # 전체
+        filter_start_date = start_date
+        comparison_start = start_date
+        comparison_end = start_date
+
+# 비교 기간 설정
+if date_range != "커스텀":
+    pass
+else:
+    comparison_start = filter_start_date - pd.Timedelta(days=(filter_end_date - filter_start_date).days)
+    comparison_end = filter_start_date
+
 # 상품 필터
+st.sidebar.markdown("---")
 product_sales = load_product_sales()
 all_products = product_sales['product'].unique().tolist()
 selected_products = st.sidebar.multiselect(
@@ -71,21 +114,17 @@ selected_categories = st.sidebar.multiselect(
 )
 
 # 기간에 따른 필터링
-if date_range == "최근 7일":
-    filter_start_date = end_date - pd.Timedelta(days=7)
-    comparison_start = end_date - pd.Timedelta(days=14)
-    comparison_end = end_date - pd.Timedelta(days=7)
-elif date_range == "최근 30일":
-    filter_start_date = end_date - pd.Timedelta(days=30)
-    comparison_start = end_date - pd.Timedelta(days=60)
-    comparison_end = end_date - pd.Timedelta(days=30)
-else:  # 전체
-    filter_start_date = start_date
-    comparison_start = start_date
-    comparison_end = start_date
-
-filtered_daily_sales = daily_sales[daily_sales['date'] >= filter_start_date]
+filtered_daily_sales = daily_sales[(daily_sales['date'] >= filter_start_date) & (daily_sales['date'] <= filter_end_date)]
 comparison_sales = daily_sales[(daily_sales['date'] >= comparison_start) & (daily_sales['date'] < comparison_end)]
+
+# 선택된 기간 표시
+st.sidebar.markdown("---")
+st.sidebar.info(f"""
+📊 **선택된 기간**
+- 시작: {filter_start_date.strftime('%Y-%m-%d')}
+- 종료: {filter_end_date.strftime('%Y-%m-%d')}
+- 기간: {(filter_end_date - filter_start_date).days + 1}일
+""")
 
 # 메트릭 계산
 def calculate_metrics(data):
@@ -672,7 +711,7 @@ fig_heatmap = go.Figure(data=go.Heatmap(
 ))
 
 fig_heatmap.update_layout(
-    height=700,
+    height=600,
     xaxis_title="요일",
     yaxis_title="시간대",
     title="",
@@ -682,12 +721,44 @@ fig_heatmap.update_layout(
 )
 st.plotly_chart(fig_heatmap, use_container_width=True)
 
+# 데이터 테이블로 상세 보기
+st.write("**📊 시간대별 × 요일별 상세 데이터**")
+
+# 테이블 데이터 준비 (보기 좋게 포맷팅)
+heatmap_display = heatmap_data.copy()
+heatmap_display = heatmap_display.astype(int)
+
+# 평균과 비교
+heatmap_display['평균'] = heatmap_display.mean(axis=1).astype(int)
+heatmap_display['최고'] = heatmap_display.iloc[:, :-1].max(axis=1).astype(int)
+heatmap_display['최저'] = heatmap_display.iloc[:, :-1].min(axis=1).astype(int)
+
+# 데이터 스타일링을 위한 DataFrame 생성
+def color_value(val, col_min, col_max):
+    """값에 따라 배경색을 지정하는 함수"""
+    if pd.isna(val):
+        return ''
+    normalized = (val - col_min) / (col_max - col_min) if col_max > col_min else 0
+    if normalized > 0.66:
+        return f'background-color: #1a9850; color: white'  # 초록
+    elif normalized > 0.33:
+        return f'background-color: #fee08b; color: black'  # 노랑
+    else:
+        return f'background-color: #d73027; color: white'  # 빨강
+
+# 테이블 표시
+st.dataframe(
+    heatmap_display.style.format('{:,}'),
+    use_container_width=True,
+    height=600
+)
+
 # 개선 포인트 분석
 col1, col2 = st.columns([2, 1])
 
 with col1:
     st.info("""
-    📊 **히트맵 해석 방법:**
+    📊 **색상 의미:**
     - 🟢 초록색: 판매가 잘되는 구간 (평균 이상)
     - 🟡 노란색: 보통 판매 구간
     - 🔴 빨간색: 판매가 낮은 구간 ⚠️ 개선 필요
