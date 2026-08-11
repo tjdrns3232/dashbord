@@ -1,0 +1,14 @@
+venv/
+__pycache__/
+*.pyc
+.streamlit/
+*.egg-info/
+dist/
+build/
+.DS_Store
+.env
+*.csv
+data/raw/*
+!data/raw/.gitkeep
+.cache/
+AppData/
