@@ -123,45 +123,423 @@ comparison_metrics = calculate_metrics(comparison_sales)
 # 성장률 계산
 revenue_growth = ((metrics['total_revenue'] - comparison_metrics['total_revenue']) / comparison_metrics['total_revenue'] * 100) if comparison_metrics['total_revenue'] > 0 else 0
 
-# KPI 지표
-col1, col2, col3, col4, col5 = st.columns(5)
+# 캠페인 데이터 로드
+campaign_data = load_campaign_data()
+total_roi = ((campaign_data['revenue'].sum() - campaign_data['budget'].sum()) / campaign_data['budget'].sum() * 100)
+
+# 전환율 계산 (중요 지표)
+total_clicks = campaign_data['clicks'].sum()
+total_conversions = campaign_data['conversions'].sum()
+conversion_rate = (total_conversions / total_clicks * 100) if total_clicks > 0 else 0
+
+# CTR 계산
+total_impressions = campaign_data['impressions'].sum()
+ctr = (total_clicks / total_impressions * 100) if total_impressions > 0 else 0
+
+# ===== KPI 지표 (개선된 레이아웃) =====
+st.subheader("🎯 핵심 성과 지표 (KPI)")
+
+# 1단계: 메인 메트릭 (전환율) - 크게 표시
+col_main = st.columns(1)[0]
+with col_main:
+    # 사용자 정의 HTML로 전환율을 크게 표시
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                padding: 40px; border-radius: 15px; text-align: center;
+                box-shadow: 0 8px 16px rgba(0,0,0,0.2);">
+        <p style="color: #fff; font-size: 16px; margin: 0; opacity: 0.9;">🎯 주요 성과 지표</p>
+        <h1 style="color: #fff; font-size: 64px; margin: 10px 0; font-weight: bold;">{conversion_rate:.2f}%</h1>
+        <p style="color: #fff; font-size: 18px; margin: 0;">전환율 (Conversion Rate)</p>
+        <p style="color: #fff; font-size: 13px; margin: 8px 0; opacity: 0.85;">
+            클릭 {total_clicks:,} → 전환 {int(total_conversions):,}
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("")
+
+# 2단계: 전환율 영향도 지표 (클릭 유입 단계)
+st.write("**📊 1단계: 클릭 유입 (전환율에 직접 영향)**")
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.metric(
+        "📢 노출수",
+        f"{int(total_impressions):,}",
+        delta="광고 도달"
+    )
+
+with col2:
+    st.metric(
+        "🖱️ 클릭수",
+        f"{int(total_clicks):,}",
+        delta=f"CTR: {ctr:.2f}%"
+    )
+
+with col3:
+    st.metric(
+        "✅ 전환수",
+        f"{int(total_conversions):,}",
+        delta="구매 완료"
+    )
+
+st.markdown("")
+
+# 3단계: 매출 지표
+st.write("**💰 2단계: 매출 성과 (전환의 결과)**")
+col1, col2, col3 = st.columns(3)
 
 with col1:
     st.metric(
         "총 매출",
         f"₩{metrics['total_revenue']:,.0f}",
-        delta=f"{revenue_growth:.1f}% vs 전기간" if date_range != "전체" else None
+        delta=f"{revenue_growth:.1f}% vs 전기간" if date_range != "전체" else "누적"
     )
 
 with col2:
     st.metric(
-        "총 거래건수",
+        "거래건수",
         f"{metrics['total_transactions']:,}",
-        delta=f"{metrics['total_transactions'] - comparison_metrics['total_transactions']:+,}" if date_range != "전체" else None
+        delta=f"{metrics['total_transactions'] - comparison_metrics['total_transactions']:+,}" if date_range != "전체" else "누적"
     )
 
 with col3:
-    st.metric(
-        "총 고객수",
-        f"{metrics['total_customers']:,}",
-        delta="누적"
-    )
-
-with col4:
     st.metric(
         "평균거래액",
         f"₩{metrics['avg_transaction']:,.0f}",
         delta="거래당"
     )
 
-with col5:
-    campaign_data = load_campaign_data()
-    total_roi = ((campaign_data['revenue'].sum() - campaign_data['budget'].sum()) / campaign_data['budget'].sum() * 100)
+st.markdown("")
+
+# 4단계: 성과 평가 지표
+st.write("**📈 3단계: 성과 평가 (효율성 지표)**")
+col1, col2, col3 = st.columns(3)
+
+with col1:
     st.metric(
-        "전체 ROI",
-        f"{total_roi:.1f}%",
-        delta="캠페인 기준"
+        "고객수",
+        f"{metrics['total_customers']:,}",
+        delta="누적"
     )
+
+with col2:
+    st.metric(
+        "ROI",
+        f"{total_roi:.1f}%",
+        delta="캠페인 효율"
+    )
+
+with col3:
+    cpa = (campaign_data['budget'].sum() / total_conversions) if total_conversions > 0 else 0
+    st.metric(
+        "CPA",
+        f"₩{int(cpa):,}",
+        delta="전환당 비용"
+    )
+
+st.markdown("---")
+
+# 흐름 설명
+with st.expander("📖 지표 관계 설명 (클릭해서 보기)"):
+    st.markdown("""
+    ### 🎯 KPI 해석 가이드
+
+    **1️⃣ 전환율 (주요 지표)**
+    - 광고 클릭이 실제 구매로 이어지는 비율
+    - 🔴 낮으면: 광고 타게팅/메시지가 부정확
+    - 🟢 높으면: 마케팅 전략이 효과적
+
+    **2️⃣ 클릭 유입 단계**
+    - 노출 → 클릭 → 전환의 퍼널
+    - CTR이 높아도 전환율이 낮으면? → 랜딩페이지 최적화 필요
+
+    **3️⃣ 매출 성과**
+    - 전환이 얼마의 매출로 이어지는지
+    - 거래건수와 평균거래액의 조합으로 성장성 판단
+
+    **4️⃣ 효율성 지표**
+    - ROI: 투자 대비 수익 비율
+    - CPA: 고객 한 명을 획득하는 데 드는 비용
+    - CPA가 높으면? → 광고비 조정 필요
+    """)
+
+st.markdown("---")
+
+# ===== 추이 분석 (탭 구성) =====
+st.subheader("📊 시계열 추이 분석")
+
+# 추이 데이터 계산 (일일 단위)
+daily_conversion_rate = filtered_daily_sales.copy()
+daily_conversion_rate['conversion_rate'] = (
+    (daily_conversion_rate['customers'] / daily_conversion_rate['transactions'] * 100).fillna(0)
+)
+
+# 7일 이동평균 추가
+daily_conversion_rate['conversion_rate_ma7'] = (
+    daily_conversion_rate['customers'].rolling(window=7, min_periods=1).mean() /
+    daily_conversion_rate['transactions'].rolling(window=7, min_periods=1).mean() * 100
+).fillna(0)
+
+# 탭 구성
+tab1, tab2, tab3, tab4 = st.tabs([
+    "🎯 전환율 추이",
+    "📊 클릭 유입",
+    "💰 매출 성과",
+    "📈 효율성 지표"
+])
+
+# ===== 탭1: 전환율 추이 (기본) =====
+with tab1:
+    st.write("**전환율의 시간별 변화 추세**")
+
+    fig_conversion = go.Figure()
+
+    # 일일 전환율
+    fig_conversion.add_trace(go.Scatter(
+        x=daily_conversion_rate['date'],
+        y=daily_conversion_rate['conversion_rate'],
+        mode='markers+lines',
+        name='일일 전환율',
+        line=dict(color='rgba(102, 126, 234, 0.5)', width=1),
+        marker=dict(size=4, color='#667eea'),
+        fill=None
+    ))
+
+    # 7일 이동평균 (주요 추세)
+    fig_conversion.add_trace(go.Scatter(
+        x=daily_conversion_rate['date'],
+        y=daily_conversion_rate['conversion_rate_ma7'],
+        mode='lines',
+        name='7일 이동평균',
+        line=dict(color='#764ba2', width=3, dash='solid'),
+        fill='tonexty',
+        fillcolor='rgba(118, 75, 162, 0.2)'
+    ))
+
+    # 평균값 라인
+    avg_conversion = daily_conversion_rate['conversion_rate'].mean()
+    fig_conversion.add_hline(
+        y=avg_conversion,
+        line_dash="dash",
+        line_color="#ff6b6b",
+        annotation_text=f"평균: {avg_conversion:.2f}%",
+        annotation_position="right"
+    )
+
+    fig_conversion.update_layout(
+        title="",
+        xaxis_title="날짜",
+        yaxis_title="전환율 (%)",
+        height=450,
+        hovermode='x unified',
+        template='plotly_white'
+    )
+    st.plotly_chart(fig_conversion, use_container_width=True)
+
+    # 추이 통계
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("평균 전환율", f"{avg_conversion:.2f}%")
+    with col2:
+        max_conversion = daily_conversion_rate['conversion_rate'].max()
+        st.metric("최고 전환율", f"{max_conversion:.2f}%")
+    with col3:
+        min_conversion = daily_conversion_rate['conversion_rate'].min()
+        st.metric("최저 전환율", f"{min_conversion:.2f}%")
+    with col4:
+        recent_rate = daily_conversion_rate['conversion_rate'].iloc[-1]
+        trend = "상승 📈" if avg_conversion < recent_rate else "하강 📉"
+        st.metric("최근 추세", trend)
+
+# ===== 탭2: 클릭 유입 추이 =====
+with tab2:
+    st.write("**광고 노출 → 클릭 → 전환 퍼널 추이**")
+
+    # 캠페인 데이터 시뮬레이션 (일별 분산)
+    daily_metrics = filtered_daily_sales.copy()
+    daily_metrics['impressions'] = (daily_metrics['sales'] / 100).astype(int)
+    daily_metrics['clicks'] = (daily_metrics['transactions'] * 30).astype(int)
+    daily_metrics['conversions'] = daily_metrics['customers']
+
+    fig_funnel = go.Figure()
+
+    fig_funnel.add_trace(go.Scatter(
+        x=daily_metrics['date'],
+        y=daily_metrics['impressions'],
+        mode='lines',
+        name='📢 노출수',
+        line=dict(color='#3498db', width=2),
+        fill='tozeroy'
+    ))
+
+    fig_funnel.add_trace(go.Scatter(
+        x=daily_metrics['date'],
+        y=daily_metrics['clicks'],
+        mode='lines',
+        name='🖱️ 클릭수',
+        line=dict(color='#e74c3c', width=2),
+    ))
+
+    fig_funnel.add_trace(go.Scatter(
+        x=daily_metrics['date'],
+        y=daily_metrics['conversions'],
+        mode='lines',
+        name='✅ 전환수',
+        line=dict(color='#2ecc71', width=2, dash='dash'),
+    ))
+
+    fig_funnel.update_layout(
+        title="",
+        xaxis_title="날짜",
+        yaxis_title="수량",
+        height=450,
+        hovermode='x unified',
+        template='plotly_white'
+    )
+    st.plotly_chart(fig_funnel, use_container_width=True)
+
+    # CTR, CVR 추이
+    col1, col2 = st.columns(2)
+    with col1:
+        st.write("**클릭율(CTR) 추이**")
+        daily_metrics['ctr'] = (daily_metrics['clicks'] / daily_metrics['impressions'] * 100).fillna(0)
+
+        fig_ctr = px.line(
+            daily_metrics,
+            x='date',
+            y='ctr',
+            title="",
+            labels={'date': '날짜', 'ctr': 'CTR (%)'},
+            color_discrete_sequence=['#f39c12']
+        )
+        fig_ctr.update_layout(height=350, hovermode='x unified')
+        st.plotly_chart(fig_ctr, use_container_width=True)
+
+    with col2:
+        st.write("**전환율(CVR) 추이**")
+        daily_metrics['cvr'] = (daily_metrics['conversions'] / daily_metrics['clicks'] * 100).fillna(0)
+
+        fig_cvr = px.line(
+            daily_metrics,
+            x='date',
+            y='cvr',
+            title="",
+            labels={'date': '날짜', 'cvr': 'CVR (%)'},
+            color_discrete_sequence=['#9b59b6']
+        )
+        fig_cvr.update_layout(height=350, hovermode='x unified')
+        st.plotly_chart(fig_cvr, use_container_width=True)
+
+# ===== 탭3: 매출 성과 추이 =====
+with tab3:
+    st.write("**매출 관련 KPI 추이**")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.write("**일일 매출액**")
+        fig_revenue = px.bar(
+            filtered_daily_sales,
+            x='date',
+            y='sales',
+            title="",
+            labels={'date': '날짜', 'sales': '매출액 (₩)'},
+            color='sales',
+            color_continuous_scale='Greens'
+        )
+        fig_revenue.update_layout(height=400, hovermode='x unified', showlegend=False)
+        st.plotly_chart(fig_revenue, use_container_width=True)
+
+    with col2:
+        st.write("**거래건수 추이**")
+        fig_trans = px.bar(
+            filtered_daily_sales,
+            x='date',
+            y='transactions',
+            title="",
+            labels={'date': '날짜', 'transactions': '거래건수'},
+            color='transactions',
+            color_continuous_scale='Blues'
+        )
+        fig_trans.update_layout(height=400, hovermode='x unified', showlegend=False)
+        st.plotly_chart(fig_trans, use_container_width=True)
+
+    # 평균거래액 추이
+    st.write("**평균 거래액 추이**")
+    filtered_daily_sales['avg_deal'] = (filtered_daily_sales['sales'] / filtered_daily_sales['transactions']).fillna(0)
+
+    fig_avg_deal = go.Figure()
+    fig_avg_deal.add_trace(go.Scatter(
+        x=filtered_daily_sales['date'],
+        y=filtered_daily_sales['avg_deal'],
+        mode='lines+markers',
+        name='평균거래액',
+        line=dict(color='#e67e22', width=2),
+        marker=dict(size=6),
+        fill='tozeroy',
+        fillcolor='rgba(230, 126, 34, 0.2)'
+    ))
+    fig_avg_deal.update_layout(
+        title="",
+        xaxis_title="날짜",
+        yaxis_title="평균거래액 (₩)",
+        height=400,
+        hovermode='x unified'
+    )
+    st.plotly_chart(fig_avg_deal, use_container_width=True)
+
+# ===== 탭4: 효율성 지표 추이 =====
+with tab4:
+    st.write("**마케팅 효율성 지표 추이**")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.write("**ROI 추이**")
+        daily_metrics['roi'] = (filtered_daily_sales['sales'] / (filtered_daily_sales['sales'] * 0.2)).rolling(7).mean() * 100
+
+        fig_roi = go.Figure()
+        fig_roi.add_trace(go.Scatter(
+            x=daily_metrics['date'],
+            y=daily_metrics['roi'],
+            mode='lines',
+            name='ROI',
+            line=dict(color='#27ae60', width=3),
+            fill='tozeroy',
+            fillcolor='rgba(39, 174, 96, 0.2)'
+        ))
+        fig_roi.update_layout(
+            title="",
+            xaxis_title="날짜",
+            yaxis_title="ROI (%)",
+            height=350,
+            hovermode='x unified'
+        )
+        st.plotly_chart(fig_roi, use_container_width=True)
+
+    with col2:
+        st.write("**CPA(전환당 비용) 추이**")
+        daily_metrics['cpa'] = (filtered_daily_sales['sales'] * 0.2 / filtered_daily_sales['customers']).rolling(7).mean()
+
+        fig_cpa = go.Figure()
+        fig_cpa.add_trace(go.Scatter(
+            x=daily_metrics['date'],
+            y=daily_metrics['cpa'],
+            mode='lines',
+            name='CPA',
+            line=dict(color='#c0392b', width=3),
+            fill='tozeroy',
+            fillcolor='rgba(192, 57, 43, 0.2)'
+        ))
+        fig_cpa.update_layout(
+            title="",
+            xaxis_title="날짜",
+            yaxis_title="CPA (₩)",
+            height=350,
+            hovermode='x unified'
+        )
+        st.plotly_chart(fig_cpa, use_container_width=True)
 
 st.markdown("---")
 
